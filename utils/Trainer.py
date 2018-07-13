@@ -113,8 +113,8 @@ class Trainer(object):
                 best_loss = self.loss_meter.value()[0]
 
             # visualize
-            vis.img('loss', self.loss_meter.value()[0])
-            vis.img('val_accuracy', val_accuracy)
+            vis.plot('loss', self.loss_meter.value()[0])
+            vis.plot('val_accuracy', val_accuracy)
             vis.log("epoch:{epoch},lr:{lr},loss:{loss},train_cm:{train_cm},val_cm:{val_cm}".format(
                 epoch=epoch, loss=self.loss_meter.value()[0], val_cm=str(val_cm.value()),
                 train_cm=str(self.confusion_matrix.value()), lr=get_learning_rates(self.optimizer)))

@@ -27,10 +27,3 @@ viz.line(
     name='delete this',
     update='append'
 )
-viz.line(
-    X=np.arange(1, 10),
-    Y=np.arange(11, 20),
-    win=win,
-    name='4',
-    update='insert'
-)

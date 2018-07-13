@@ -3,6 +3,7 @@ import os
 from PIL import Image
 from torch.utils import data
 from torchvision import transforms as T
+import numpy as np
 
 
 class Hand(data.Dataset):
@@ -65,3 +66,26 @@ class Hand(data.Dataset):
     
     def __len__(self):
         return len(self.images_path)
+
+import DataGeneration
+class Formation(object):
+    def __init__(self):
+        self.formations = DataGeneration.generate_warships_formation()
+
+        self.transform = T.Compose([T.ToTensor(), T.ToPILImage()])
+
+        other_channels = [[255] * 60 for i in range(60)]
+
+
+        temp = [list(self.formations[0])*255, other_channels, other_channels]
+        # temp.reshape(10, 60, 3)
+        print(temp)
+
+        img = np.ndarray([self.formations[0], other_channels, other_channels])
+
+        img_tensor = self.transform(img)
+
+        img_tensor.save('test.jpg','jpeg')
+
+if __name__ == '__main__':
+    tb = Formation()
