@@ -3,7 +3,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
-from data import Hand
+from data.dataset import *
 from utils import Trainer
 from network.resnet import resnet34, resnet101, resnet18
 
@@ -30,8 +30,11 @@ params.save_freq_epoch = 10
 
 # load data
 print("Loading dataset...")
-train_data = Hand(data_root,train=True)
-val_data = Hand(data_root,train=False)
+masks = generate_masks(55000)
+# train_data = Hand(data_root,train=True)
+# val_data = Hand(data_root,train=False)
+train_data = TrainData(masks=masks[:50000])
+val_data = TestData(masks=masks[5000:])
 
 batch_size = batch_size if len(params.gpus) == 0 else batch_size*len(params.gpus)
 

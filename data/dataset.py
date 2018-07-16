@@ -4,7 +4,7 @@ from PIL import Image
 from torch.utils import data
 from torchvision import transforms as T
 import numpy as np
-
+import time
 
 class Hand(data.Dataset):
     
@@ -68,24 +68,104 @@ class Hand(data.Dataset):
         return len(self.images_path)
 
 import DataGeneration
-class Formation(object):
-    def __init__(self):
+
+def generate_masks(num):
+    masks = []
+    for i in range(num):
+        mask = sorted(np.random.choice(range(30), 15))
+        if mask in masks:
+            i -= 1
+        else:
+            masks.append(mask)
+
+
+class TrainData(object):
+    def __init__(self, masks, transforms=None):
+        np.random.seed(int(time.time()))
+        self.masks = masks
+
         self.formations = DataGeneration.generate_warships_formation()
 
-        self.transform = T.Compose([T.ToTensor(), T.ToPILImage()])
+        self._generate_data()
 
-        other_channels = [[255] * 60 for i in range(60)]
+        if not transforms:
+            self.transforms = T.Compose([
+                T.Scale(256),
+                T.RandomSizedCrop(224),
+                T.RandomHorizontalFlip(),
+                T.ToTensor(),
+                ])
 
+    def _generate_data(self):
+        self.train_data = {}
 
-        temp = [list(self.formations[0])*255, other_channels, other_channels]
-        # temp.reshape(10, 60, 3)
-        print(temp)
+        for i in range(len(self.formations)):
+            positions = DataGeneration._transform_formation_to_position(self.formations[i])
 
-        img = np.ndarray([self.formations[0], other_channels, other_channels])
+            for mask in self.masks[i*5000:(i+1)*5000]:
+                masked_positions = positions
+                for index in mask:
+                    masked_positions.remove(masked_positions[index])
+                masked_formation = DataGeneration._transform_position_to_formation(masked_positions)
+                assert(masked_formation not in self.train_data)
+                self.train_data[masked_formation] = i
 
-        img_tensor = self.transform(img)
+        self.data = np.random.shuffle(list(self.train_data.items()))
 
-        img_tensor.save('test.jpg','jpeg')
+    def __getitem__(self, index):
+        '''
+        return the data of one image
+        '''
+        formation = 255 - self.data[index][0] * 254
 
-if __name__ == '__main__':
-    tb = Formation()
+        img = Image.fromarray(formation.astype('uint8')).convert('RGB')
+
+        # img.save('test.jpg', 'jpeg')
+
+        data = self.transforms(img)
+        return data, self.data[index][1]
+
+class TestData(object):
+    def __init__(self, masks, transforms=None):
+        np.random.seed(int(time.time()))
+        self.masks = masks
+
+        self.formations = DataGeneration.generate_warships_formation()
+
+        self._generate_data()
+
+        if not transforms:
+            self.transforms = T.Compose([
+                T.Scale(224),
+                T.CenterCrop(224),
+                T.ToTensor(),
+                ])
+
+    def _generate_data(self):
+        self.test_data = {}
+
+        for i in range(len(self.formations)):
+            positions = DataGeneration._transform_formation_to_position(self.formations[i])
+
+            for mask in self.masks[i*500:(i+1)*500]:
+                masked_positions = positions
+                for index in mask:
+                    masked_positions.remove(masked_positions[index])
+                masked_formation = DataGeneration._transform_position_to_formation(masked_positions)
+                assert(masked_formation not in self.test_data)
+                self.test_data[masked_formation] = i
+
+        self.data = np.random.shuffle(list(self.test_data.items()))
+
+    def __getitem__(self, index):
+        '''
+        return the data of one image
+        '''
+        formation = 255 - self.data[index][0] * 254
+
+        img = Image.fromarray(formation.astype('uint8')).convert('RGB')
+
+        # img.save('test.jpg', 'jpeg')
+
+        data = self.transforms(img)
+        return data, self.data[index][1]
