@@ -75,7 +75,7 @@ class Trainer(object):
 
         # meters
         self.loss_meter = meter.AverageValueMeter()
-        self.confusion_matrix = meter.ConfusionMeter(6)
+        self.confusion_matrix = meter.ConfusionMeter(10)
 
         # set CUDA_VISIBLE_DEVICES
         if len(self.params.gpus) > 0:
@@ -150,7 +150,7 @@ class Trainer(object):
 
     def _val_one_epoch(self):
         self.model.eval()
-        confusion_matrix = meter.ConfusionMeter(6)
+        confusion_matrix = meter.ConfusionMeter(10)
         logger.info('Val on validation set...')
 
         for step, (data, label) in enumerate(self.val_data):
@@ -169,5 +169,7 @@ class Trainer(object):
         cm_value = confusion_matrix.value()
         accuracy = 100. * (cm_value[0][0] + cm_value[1][1]
                            + cm_value[2][2] + cm_value[3][3]
-                           + cm_value[4][4] + cm_value[5][5]) / (cm_value.sum())
+                           + cm_value[4][4] + cm_value[5][5]
+                           + cm_value[6][6] + cm_value[7][7]
+                           + cm_value[8][8] + cm_value[9][9]) / (cm_value.sum())
         return confusion_matrix, accuracy

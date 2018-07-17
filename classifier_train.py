@@ -30,10 +30,10 @@ params.save_freq_epoch = 10
 
 # load data
 print("Loading dataset...")
-masks = generate_masks(55000)
+masks = generate_masks(5500)
 # train_data = Hand(data_root,train=True)
 # val_data = Hand(data_root,train=False)
-train_data = TrainData(masks=masks[:50000])
+train_data = TrainData(masks=masks[:5000])
 val_data = TestData(masks=masks[5000:])
 
 batch_size = batch_size if len(params.gpus) == 0 else batch_size*len(params.gpus)
@@ -45,8 +45,8 @@ val_dataloader = DataLoader(val_data, batch_size=batch_size, shuffle=False, num_
 print('val dataset len: {}'.format(len(val_dataloader.dataset)))
 
 # models
-model = resnet18(pretrained=False, modelpath=model_path, num_classes=6)  # batch_size=120, 1GPU Memory < 7000M
-model.fc = nn.Linear(512, 6)
+model = resnet18(pretrained=False, modelpath=model_path, num_classes=1000)  # batch_size=120, 1GPU Memory < 7000M
+model.fc = nn.Linear(512, 10)
 # model = resnet101(pretrained=False, modelpath=model_path, num_classes=1000)  # batch_size=60, 1GPU Memory > 9000M
 # model.fc = nn.Linear(512*4, 6)
 

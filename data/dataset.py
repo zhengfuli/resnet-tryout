@@ -68,16 +68,24 @@ class Hand(data.Dataset):
         return len(self.images_path)
 
 import DataGeneration
+from tqdm import tqdm, trange
 
 def generate_masks(num):
+    print("Generating Masks...", end="")
     masks = []
-    for i in range(num):
-        mask = sorted(np.random.choice(range(30), 15))
+    process_bar = tqdm()
+
+    while len(masks) < num:
+        mask = sorted(np.random.choice(range(30), 20, False))
         if mask in masks:
-            i -= 1
+            pass
         else:
             masks.append(mask)
+            process_bar.update(1)
 
+    # process_bar.close()
+    print(len(masks), "Done.")
+    return masks
 
 class TrainData(object):
     def __init__(self, masks, transforms=None):
@@ -90,40 +98,47 @@ class TrainData(object):
 
         if not transforms:
             self.transforms = T.Compose([
-                T.Scale(256),
-                T.RandomSizedCrop(224),
-                T.RandomHorizontalFlip(),
+                T.Pad(padding=107, fill=(255, 255, 255)),
+                T.Scale(1400),
+                T.CenterCrop(224),
                 T.ToTensor(),
                 ])
 
     def _generate_data(self):
-        self.train_data = {}
+        self.train_data = []
+        self.mappings = []
 
+        # print(len(self.formations))
         for i in range(len(self.formations)):
             positions = DataGeneration._transform_formation_to_position(self.formations[i])
 
-            for mask in self.masks[i*5000:(i+1)*5000]:
-                masked_positions = positions
-                for index in mask:
-                    masked_positions.remove(masked_positions[index])
-                masked_formation = DataGeneration._transform_position_to_formation(masked_positions)
-                assert(masked_formation not in self.train_data)
-                self.train_data[masked_formation] = i
+            mask = self.masks[i*500:(i+1)*500]
+            for j in range(len(mask)):
+                # print(len(positions))
+                masked_positions = [positions[index] for index in mask[j]]
+                self.train_data.append(masked_positions)
+                self.mappings.append([j+i*500, i])
 
-        self.data = np.random.shuffle(list(self.train_data.items()))
+        np.random.shuffle(self.mappings)
 
     def __getitem__(self, index):
         '''
         return the data of one image
         '''
-        formation = 255 - self.data[index][0] * 254
+        masked_formation = DataGeneration._transform_position_to_formation(self.train_data[self.mappings[index][0]])
 
-        img = Image.fromarray(formation.astype('uint8')).convert('RGB')
+        masked_formation = 255 - masked_formation * 255
+
+        data = Image.fromarray(masked_formation.astype('uint8')).convert('RGB')
 
         # img.save('test.jpg', 'jpeg')
 
-        data = self.transforms(img)
-        return data, self.data[index][1]
+        data = self.transforms(data)
+
+        return data, self.mappings[index][1]
+
+    def __len__(self):
+        return len(self.train_data)
 
 class TestData(object):
     def __init__(self, masks, transforms=None):
@@ -136,36 +151,71 @@ class TestData(object):
 
         if not transforms:
             self.transforms = T.Compose([
-                T.Scale(224),
+                T.Pad(padding=107, fill=(255, 255, 255)),
+                T.Scale(1400),
                 T.CenterCrop(224),
                 T.ToTensor(),
                 ])
 
     def _generate_data(self):
-        self.test_data = {}
+        self.test_data = []
+        self.mappings = []
 
+        # print(len(self.formations))
         for i in range(len(self.formations)):
             positions = DataGeneration._transform_formation_to_position(self.formations[i])
 
-            for mask in self.masks[i*500:(i+1)*500]:
-                masked_positions = positions
-                for index in mask:
-                    masked_positions.remove(masked_positions[index])
-                masked_formation = DataGeneration._transform_position_to_formation(masked_positions)
-                assert(masked_formation not in self.test_data)
-                self.test_data[masked_formation] = i
+            mask = self.masks[i*50:(i+1)*50]
+            for j in range(len(mask)):
+                # print(len(positions))
+                masked_positions = [positions[index] for index in mask[j]]
+                self.test_data.append(masked_positions)
+                self.mappings.append([j+i*50, i])
 
-        self.data = np.random.shuffle(list(self.test_data.items()))
+        np.random.shuffle(self.mappings)
 
     def __getitem__(self, index):
         '''
         return the data of one image
         '''
-        formation = 255 - self.data[index][0] * 254
+        masked_formation = DataGeneration._transform_position_to_formation(self.test_data[self.mappings[index][0]])
 
-        img = Image.fromarray(formation.astype('uint8')).convert('RGB')
+        masked_formation = 255 - masked_formation * 255
+
+        data = Image.fromarray(masked_formation.astype('uint8')).convert('RGB')
 
         # img.save('test.jpg', 'jpeg')
 
-        data = self.transforms(img)
-        return data, self.data[index][1]
+        data = self.transforms(data)
+
+        return data, self.mappings[index][1]
+
+    def __len__(self):
+        return len(self.test_data)
+
+if __name__ == '__main__':
+    formations = DataGeneration.generate_warships_formation()
+
+    positions = DataGeneration._transform_formation_to_position(formations[9])
+
+    np.random.seed(int(time.time()))
+
+    mask = sorted(np.random.choice(range(30),20,replace=False))
+
+    masked_positions = [positions[index] for index in mask]
+
+    masked_formation = DataGeneration._transform_position_to_formation(masked_positions)
+
+    masked_formation = 255 - masked_formation * 255
+    # print(type(masked_formation))
+    transforms = T.Compose([
+        T.Pad(padding=107, fill=(255,255,255)),
+        T.Scale(1400),
+        T.CenterCrop(224)
+        # T.RandomHorizontalFlip(),
+        # T.ToTensor(),
+        ])
+
+    img = Image.fromarray(np.uint8(masked_formation)).convert('RGB')
+    img = transforms(img)
+    img.save('test.jpg', 'jpeg')
