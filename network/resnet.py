@@ -2,7 +2,7 @@ import torch.nn as nn
 import math
 import torch.utils.model_zoo as model_zoo
 
-__all__ = ['ResNet', 'resnet34', 'resnet101']
+__all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet101']
 
 model_urls = {
     'resnet34': 'https://download.pytorch.org/models/resnet34-333f7ec4.pth',
@@ -92,7 +92,7 @@ class ResNet(nn.Module):
     def __init__(self, block, layers, num_classes=1000):
         self.inplanes = 64
         super(ResNet, self).__init__()
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
+        self.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3,
                                bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
