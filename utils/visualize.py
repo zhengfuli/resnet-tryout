@@ -35,18 +35,28 @@ class Visualizer(object):
         for k, v in d.items():
             self.img(k, v)
 
-    def plot(self, name, y,**kwargs):
+    def plot(self, name, y, legend=None, **kwargs):
         '''
         self.plot('loss',1.00)
         '''
-        x = self.index.get(name, 0)
-        self.vis.line(Y=np.array([y]), X=np.array([x]),
-                      win=name,
-                      opts=dict(title=name),
-                      update=None if x == 0 else 'append',
-                      **kwargs
-                      )
-        self.index[name] = x + 1
+        if not legend:
+            x = self.index.get(name, 0)
+            self.vis.line(Y=np.array([y]), X=np.array([x]),
+                          win=name,
+                          opts=dict(title=name),
+                          update=None if x == 0 else 'append',
+                          **kwargs
+                          )
+            self.index[name] = x + 1
+        else:
+            x = self.index.get(name, 0)
+            self.vis.line(Y=np.column_stack((np.array(y[0]), np.array(y[1]))), X=np.column_stack((np.array(x), np.array(x))),
+                          win=name,
+                          opts=dict(title=name, legend=legend, ytickmax=1.0),
+                          update=None if x == 0 else 'append',
+                          **kwargs
+                          )
+            self.index[name] = x + 1
 
     def img(self, name, img_,**kwargs):
         '''

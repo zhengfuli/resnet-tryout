@@ -10,7 +10,7 @@ from network.resnet import resnet34, resnet101, resnet18
 from settings import *
 import sys
 
-train = "red" if not len(sys.argv) < 2 else sys.argv[1]
+train = "red" if len(sys.argv) < 2 else sys.argv[1]
 
 # Set Training parameters
 params = trainer.TrainParams()
@@ -61,24 +61,21 @@ if train == "red":
 
 elif train == "blue":
     # setting loss function
-    params.criterion = nn.MSELoss()
+    params.criterion = nn.MSELoss(reduce=True, size_average=True)
 
     # load data
     print("Loading dataset...")
+    dataset = DataReader()
 
     batch_size = batch_size if len(params.gpus) == 0 else batch_size*len(params.gpus)
-
-    train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    train_dataloader = DataLoader(dataset.get_training_set(), batch_size=batch_size, shuffle=True, num_workers=num_workers)
     print('train dataset len: {}'.format(len(train_dataloader.dataset)))
-
-    val_dataloader = DataLoader(val_data, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    val_dataloader = DataLoader(dataset.get_testing_set(), batch_size=batch_size, shuffle=False, num_workers=num_workers)
     print('val dataset len: {}'.format(len(val_dataloader.dataset)))
 
     # models
     model = resnet18(pretrained=False, modelpath=model_path, num_classes=1000)  # batch_size=120, 1GPU Memory < 7000M
-    model.fc = nn.Linear(512, formation_num)
-    # model = resnet101(pretrained=False, modelpath=model_path, num_classes=1000)  # batch_size=60, 1GPU Memory > 9000M
-    # model.fc = nn.Linear(512*4, 6)
+    model.fc = nn.Linear(512, 1)
 
     # optimizer
     trainable_vars = [param for param in model.parameters() if param.requires_grad]
@@ -90,7 +87,7 @@ elif train == "blue":
 
     # Train
     params.lr_scheduler = ReduceLROnPlateau(params.optimizer, 'min', factor=lr_decay, patience=10, cooldown=10, verbose=True)
-    trainer = trainer.RedTrainer(model, params, train_dataloader, val_dataloader)
+    trainer = trainer.BlueTrainer(model, params, train_dataloader, val_dataloader)
     trainer.train()
 
 else:

@@ -15,16 +15,16 @@ test_num = 20000
 
 # volume of both training and testing set for the blue network
 # must corresponds to the .npy file under ./data
-data_amount = 100000
+data_amount = 1000
 
 # number of data that will be used to train the network of the blue side
-train_amount = 80000
+train_amount = 800
 
 # total number of formations
 formation_num = 10
 
 # gpu setup, give the gpu number which you can check out by using nvidia-smi in the terminal
-gpus = [0, 1]
+gpus = []
 
 # path to training/testing data
 data_root = './data/'
@@ -39,7 +39,7 @@ batch_size = 100
 num_workers = 8
 
 # initial learning rate
-init_lr = 0.01
+init_lr = 0.001 # 0.01 is ok for red but will cause gradient explosion for blue
 
 # learning rate decay rate
 lr_decay = 0.8
@@ -63,7 +63,8 @@ base_grid = (10, 4)
 
 city_grid = (10, 4)
 
-# this is used to normalize
+# this is used to normalize the number of missiles at each base when used as training data for the value (blue) network
+# thus it's optimal that 255 % MAX_MISSILE = 0
 MAX_MISSILE = 4
 
 BASE_POSITION = np.array([[-1, 0], [-1, 1], [-1, 2], [-1, 3], [-1, 4], [-1, 5], [-1, 6], [-1, 7], [-1, 8], [-1, 9]])

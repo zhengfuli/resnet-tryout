@@ -47,6 +47,56 @@ class BasicBlock(nn.Module):
 
         return out
 
+class Net(nn.Module):
+    def __init__(self):
+        super(Net, self).__init__()
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(3)
+        )
+        self.con_layer1 = nn.Sequential(
+            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2)
+        )
+        self.con_layer2 = nn.Sequential(
+            nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2)
+        )
+        self.con_layer3 = nn.Sequential(
+            nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2)
+        )
+        self.avgpool = nn.AvgPool2d(14, stride=1)
+        self.fc_layer = nn.Sequential(
+            nn.Linear(512,1)
+        )
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.con_layer1(x)
+        x = self.con_layer2(x)
+        x = self.con_layer3(x)
+        x = self.avgpool(x)
+        x = x.view(x.size(0),-1)
+        x = self.fc_layer(x)
+        return x
 
 class Bottleneck(nn.Module):
     expansion = 4
@@ -101,7 +151,7 @@ class ResNet(nn.Module):
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
-        self.avgpool = nn.AvgPool2d(7, stride=1)
+        self.avgpool = nn.AvgPool2d(7, stride=1) # 7 for 224x224 input, 3 for 68x68 input
         self.fc = nn.Linear(512 * block.expansion, num_classes)
 
         for m in self.modules():

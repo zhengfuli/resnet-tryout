@@ -207,7 +207,6 @@ class BlueTrainer(object):
 
         # meters
         self.loss_meter = meter.AverageValueMeter()
-        self.confusion_matrix = meter.ConfusionMeter(formation_num)
 
         # set CUDA_VISIBLE_DEVICES
         if len(self.params.gpus) > 0:
@@ -226,7 +225,7 @@ class BlueTrainer(object):
         for epoch in range(self.last_epoch, self.params.max_epoch):
 
             self.loss_meter.reset()
-            self.confusion_matrix.reset()
+            # self.confusion_matrix.reset()
 
             self.last_epoch += 1
             logger.info('Start training epoch {}'.format(self.last_epoch))
@@ -235,21 +234,19 @@ class BlueTrainer(object):
 
             # save model
             if (self.last_epoch % self.params.save_freq_epoch == 0) or (self.last_epoch == self.params.max_epoch - 1):
-                save_name = self.params.save_dir + 'red_ckpt_epoch_{}.pth'.format(self.last_epoch)
+                save_name = self.params.save_dir + 'blue_ckpt_epoch_{}.pth'.format(self.last_epoch)
                 t.save(self.model.state_dict(), save_name)
 
-            val_cm, val_accuracy = self._val_one_epoch()
+            val_mse = self._val_one_epoch()
 
             if self.loss_meter.value()[0] < best_loss:
                 logger.info('Found a better ckpt ({:.3f} -> {:.3f}), '.format(best_loss, self.loss_meter.value()[0]))
                 best_loss = self.loss_meter.value()[0]
 
             # visualize
-            vis.plot('loss', self.loss_meter.value()[0])
-            vis.plot('val_accuracy', val_accuracy)
-            vis.log("epoch:{epoch},lr:{lr},loss:{loss},train_cm:{train_cm},val_cm:{val_cm}".format(
-                epoch=epoch, loss=self.loss_meter.value()[0], val_cm=str(val_cm.value()),
-                train_cm=str(self.confusion_matrix.value()), lr=get_learning_rates(self.optimizer)))
+            vis.plot('MSE', [self.loss_meter.value()[0], val_mse], ['Training Set','Testing Set'])
+            vis.log("epoch:{epoch},lr:{lr},train_mse:{train_mse},val_mse:{val_mse}".format(
+                epoch=epoch, train_mse=self.loss_meter.value()[0], val_mse=val_mse, lr=get_learning_rates(self.optimizer)))
 
             # adjust the lr
             if isinstance(self.lr_scheduler, ReduceLROnPlateau):
@@ -261,15 +258,17 @@ class BlueTrainer(object):
     def _train_one_epoch(self):
         for step, (data, label) in enumerate(self.train_data):
             # train model
+            # print(len(data))
             inputs = Variable(data)
-            target = Variable(label)
+            targets = Variable(label.type(t.FloatTensor))
             if len(self.params.gpus) > 0:
                 inputs = inputs.cuda()
-                target = target.cuda()
+                targets = targets.cuda()
 
             # forward
-            score = self.model(inputs)
-            loss = self.criterion(score, target)
+            values = self.model(inputs)
+            # print(values, targets)
+            loss = self.criterion(values, targets)
 
             # backward
             self.optimizer.zero_grad()
@@ -278,26 +277,26 @@ class BlueTrainer(object):
 
             # meters update
             self.loss_meter.add(loss.data[0])
-            self.confusion_matrix.add(score.data, target.data)
 
     def _val_one_epoch(self):
         self.model.eval()
-        confusion_matrix = meter.ConfusionMeter(formation_num)
+        average_meter = meter.AverageValueMeter()
+        loss_fn = t.nn.MSELoss(reduce=True, size_average=True)
+
         logger.info('Val on validation set...')
 
         for step, (data, label) in enumerate(self.val_data):
 
             # val model
             inputs = Variable(data, volatile=True)
-            target = Variable(label.type(t.LongTensor), volatile=True)
+            targets = Variable(label.type(t.FloatTensor), volatile=True)
             if len(self.params.gpus) > 0:
                 inputs = inputs.cuda()
-                target = target.cuda()
+                targets = targets.cuda()
 
-            score = self.model(inputs)
-            confusion_matrix.add(score.data.squeeze(), label.type(t.LongTensor))
+            values = self.model(inputs)
+            loss = loss_fn(values, targets)
+            average_meter.add(loss.data[0])
 
         self.model.train()
-        cm_value = confusion_matrix.value()
-        accuracy = 100. * (sum([cm_value[i][i] for i in range(formation_num)])) / (cm_value.sum())
-        return confusion_matrix, accuracy
+        return average_meter.value()[0]
